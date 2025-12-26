@@ -4,9 +4,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 
 	"github.com/gorilla/websocket"
 )
+
+
+
+type JsonOutput struct {
+	e string 	`json:"e"`
+	E int64 	`json:"E"`
+	s string 	`json:"s"`
+	U int64 	`json:"U"`
+	u int64 	`json:"u"`
+	Bids [][]string		`json:"b"`
+	Asks [][]string		`json:"a"`
+}
 
 type PriceNode struct {
 	Price 		float64
@@ -57,21 +70,33 @@ func main() {
 	fmt.Println("Reading stream")
 	bidsBst := &PriceNode{}
 
+	
+
 	for {
 		_, message, _ := c.ReadMessage()
 
-		var raw map[string]any
-		json.Unmarshal(message, &raw)
-		bids, _ := raw["b"].([]any)
-		asks, _ := raw["a"].([]any)
+		
+		var output JsonOutput
+		json.Unmarshal(message, &output)
+		bids := output.Bids
+		asks := output.Asks
+
 
 		if len(bids) > 0 && len(asks) > 0 {
-			topBid := bids[0].([]float64)
+			topBid := bids[0]
 			//topAsk := asks[0].([]any)
 			// fmt.Printf("price: %s | qty: %s  bid ||| price: %s | qty: %s  ask\n", topBid[0], topBid[1], topAsk[0], topAsk[1])
-			quantity := topBid[1]
-			bidPrice := topBid[0]
+			quantityStr := topBid[0]
+			bidPriceStr := topBid[0]
+
+			quantity, _ := strconv.ParseFloat(quantityStr, 64)
+			bidPrice, _ := strconv.ParseFloat(bidPriceStr, 64)
+
 			bidsBst.Insert(quantity, bidPrice, true)
+
+			fmt.Println(GetDescendingTop10(PriceNode))
 		}
 	}
+
+
 }
