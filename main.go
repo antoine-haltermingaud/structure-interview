@@ -31,8 +31,7 @@ func main() {
 		if len(bids) > 0 && len(asks) > 0 {
 			topBid := bids[0].([]any)
 			topAsk := asks[0].([]any)
-			fmt.Printf("price: %s | qty: %s  bid\n", topBid[0], topBid[1])
-			fmt.Printf("price: %s | qty: %s  ask\n", topAsk[0], topAsk[1])
+			fmt.Printf("price: %s | qty: %s  bid ||| price: %s | qty: %s  ask\n", topBid[0], topBid[1], topAsk[0], topAsk[1])
 		}
 	}
 }
