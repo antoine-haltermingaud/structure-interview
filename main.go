@@ -68,33 +68,44 @@ func main() {
 	defer c.Close()
 
 	fmt.Println("Reading stream")
-	bidsBst := &PriceNode{}
-
-	
+	var bidsBst *PriceNode
+	var askBst *PriceNode
 
 	for {
 		_, message, _ := c.ReadMessage()
 
-		
 		var output JsonOutput
 		json.Unmarshal(message, &output)
 		bids := output.Bids
 		asks := output.Asks
 
-
 		if len(bids) > 0 && len(asks) > 0 {
 			topBid := bids[0]
-			//topAsk := asks[0].([]any)
+			topAsk := asks[0]
 			// fmt.Printf("price: %s | qty: %s  bid ||| price: %s | qty: %s  ask\n", topBid[0], topBid[1], topAsk[0], topAsk[1])
-			quantityStr := topBid[0]
 			bidPriceStr := topBid[0]
+			bidQuantityStr := topBid[1]
 
-			quantity, _ := strconv.ParseFloat(quantityStr, 64)
+			askPriceStr := topAsk[0]
+			askQuantityStr := topAsk[1]
+
+			bidQuantity, _ := strconv.ParseFloat(bidQuantityStr, 64)
 			bidPrice, _ := strconv.ParseFloat(bidPriceStr, 64)
 
-			bidsBst.Insert(quantity, bidPrice, true)
+			askQuantity, _ := strconv.ParseFloat(askQuantityStr, 64)
+			askPrice, _ := strconv.ParseFloat(askPriceStr, 64)
 
-			fmt.Println(GetDescendingTop10(PriceNode))
+			bidsBst = bidsBst.Insert(bidQuantity, bidPrice, true)
+			askBst = bidsBst.Insert(askQuantity, askPrice, true)
+
+			var bidResults []PriceNode
+			var askResults []PriceNode
+
+			GetDescendingTop10(bidsBst, &bidResults)
+			GetDescendingTop10(askBst, &askResults)
+			fmt.Printf("Top 10 Bids: %+v\n", bidResults)
+			fmt.Printf("Top 10 Asks: %+v\n", askResults)
+
 		}
 	}
 
