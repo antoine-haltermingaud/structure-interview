@@ -91,34 +91,46 @@ func main() {
 		asks := output.Asks
 
 		if len(bids) > 0 && len(asks) > 0 {
-			topBid := bids[0]
-			topAsk := asks[0]
+			for _, bid := range bids {
+				priceStr := bid[0]
+				quantityStr := bid[1]
+
+				quantity, _ := strconv.ParseFloat(quantityStr, 64)
+				price, _ := strconv.ParseFloat(priceStr, 64)
+
+				bidsBst = bidsBst.Insert(quantity, price, true)
+			}
+
+			for _, ask := range asks {
+				priceStr := ask[0]
+				quantityStr := ask[1]
+
+				quantity, _ := strconv.ParseFloat(quantityStr, 64)
+				price, _ := strconv.ParseFloat(priceStr, 64)
+
+				askBst = askBst.Insert(quantity, price, false)
+			}
 			// fmt.Printf("price: %s | qty: %s  bid ||| price: %s | qty: %s  ask\n", topBid[0], topBid[1], topAsk[0], topAsk[1])
-			bidPriceStr := topBid[0]
-			bidQuantityStr := topBid[1]
-
-			askPriceStr := topAsk[0]
-			askQuantityStr := topAsk[1]
-
-			bidQuantity, _ := strconv.ParseFloat(bidQuantityStr, 64)
-			bidPrice, _ := strconv.ParseFloat(bidPriceStr, 64)
-
-			askQuantity, _ := strconv.ParseFloat(askQuantityStr, 64)
-			askPrice, _ := strconv.ParseFloat(askPriceStr, 64)
-
-			bidsBst = bidsBst.Insert(bidQuantity, bidPrice, true)
-			askBst = bidsBst.Insert(askQuantity, askPrice, true)
 
 			var bidResults []PriceNode
 			var askResults []PriceNode
 
 			GetDescendingTop10(bidsBst, &bidResults)
-			GetDescendingTop10(askBst, &askResults)
-			fmt.Printf("Top 10 Bids: %+v\n", bidResults)
-			fmt.Printf("Top 10 Asks: %+v\n", askResults)
+			GetAscendingTop10(askBst, &askResults)
+			fmt.Println("Top bids")
+			fmt.Println("----------------------")
+
+			for i, bid := range bidResults {
+				fmt.Printf("%v. Price: %v ; Qty: %v\n", i+1, bid.Price, bid.Quantity)
+			}
+			
+			fmt.Println("Top asks")
+			fmt.Println("----------------------")
+
+			for i, ask := range askResults {
+				fmt.Printf("%v. Price: %v ; Qty: %v\n", i+1, ask.Price, ask.Quantity)
+			}
 
 		}
 	}
-
-
 }
