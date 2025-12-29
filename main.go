@@ -57,6 +57,17 @@ func GetDescendingTop10(n *PriceNode, results *[]PriceNode) {
 }
 
 
+func GetAscendingTop10(n *PriceNode, results *[]PriceNode) {
+	if n == nil || len(*results) >= 10 {
+		return
+	}
+	GetAscendingTop10(n.Left, results)
+	if len(*results) < 10 && n.Quantity > 0 {
+		*results = append(*results, *n)
+	}
+	GetAscendingTop10(n.Right, results)
+}
+
 func main() {
 	url := "wss://stream.binance.com:9443/ws/btcusdc@depth"
 
