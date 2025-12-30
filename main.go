@@ -45,27 +45,27 @@ func (n *PriceNode) Insert(quantity, price float64, isBid bool) *PriceNode{
 
 }
 
-func GetDescendingTop10(n *PriceNode, results *[]PriceNode) {
-	if n == nil || len(*results) >= 10 {
+func GetDescendingTop15(n *PriceNode, results *[]PriceNode) {
+	if n == nil || len(*results) >= 15 {
 		return
 	}
-	GetDescendingTop10(n.Right, results)
-	if len(*results) < 10 && n.Quantity > 0 {
+	GetDescendingTop15(n.Right, results)
+	if len(*results) < 15 && n.Quantity > 0 {
 		*results = append(*results, *n)
 	}
-	GetDescendingTop10(n.Left, results)
+	GetDescendingTop15(n.Left, results)
 }
 
 
-func GetAscendingTop10(n *PriceNode, results *[]PriceNode) {
-	if n == nil || len(*results) >= 10 {
+func GetAscendingTop15(n *PriceNode, results *[]PriceNode) {
+	if n == nil || len(*results) >= 15 {
 		return
 	}
-	GetAscendingTop10(n.Left, results)
-	if len(*results) < 10 && n.Quantity > 0 {
+	GetAscendingTop15(n.Left, results)
+	if len(*results) < 15 && n.Quantity > 0 {
 		*results = append(*results, *n)
 	}
-	GetAscendingTop10(n.Right, results)
+	GetAscendingTop15(n.Right, results)
 }
 
 func main() {
@@ -115,8 +115,8 @@ func main() {
 			var bidResults []PriceNode
 			var askResults []PriceNode
 
-			GetDescendingTop10(bidsBst, &bidResults)
-			GetAscendingTop10(askBst, &askResults)
+			GetDescendingTop15(bidsBst, &bidResults)
+			GetAscendingTop15(askBst, &askResults)
 			fmt.Println("\nTop bids")
 			fmt.Println("----------------------")
 
