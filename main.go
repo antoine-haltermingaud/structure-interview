@@ -9,40 +9,40 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-
-
 type JsonOutput struct {
-	e string 	`json:"e"`
-	E int64 	`json:"E"`
-	s string 	`json:"s"`
-	U int64 	`json:"U"`
-	u int64 	`json:"u"`
-	Bids [][]string		`json:"b"`
-	Asks [][]string		`json:"a"`
+	EventType     string     `json:"e"`
+	EventTime     int64      `json:"E"`
+	Symbol        string     `json:"s"`
+	FirstUpdateID int64      `json:"U"`
+	FinalUpdateID int64      `json:"u"`
+	Bids          [][]string `json:"b"`
+	Asks          [][]string `json:"a"`
 }
 
 type PriceNode struct {
-	Price 		float64
-	Quantity 	float64
-	Left 			*PriceNode
-	Right			*PriceNode
+	Price    float64
+	Quantity float64
+	Left     *PriceNode
+	Right    *PriceNode
 }
 
-func (n *PriceNode) Insert(quantity, price float64, isBid bool) *PriceNode{
-	if n == nil { //pointer doesn't exist -> returns new one
+func (n *PriceNode) Insert(quantity, price float64) *PriceNode {
+	if n == nil {
 		return &PriceNode{Quantity: quantity, Price: price}
 	}
-	if price == n.Price { 
-		n.Quantity = quantity
+
+	if price == n.Price {
+		n.Quantity = quantity 
 		return n
 	}
-	if price > n.Price {
-		n.Right = n.Right.Insert(quantity, price, isBid)
-	} else {
-		n.Left = n.Left.Insert(quantity, price, isBid)
-	}
-	return n 
 
+	if price > n.Price {
+		n.Right = n.Right.Insert(quantity, price)
+	} else { 
+		n.Left = n.Left.Insert(quantity, price)
+	}
+
+	return n
 }
 
 func GetDescendingTop15(n *PriceNode, results *[]PriceNode) {
@@ -56,7 +56,6 @@ func GetDescendingTop15(n *PriceNode, results *[]PriceNode) {
 	GetDescendingTop15(n.Left, results)
 }
 
-
 func GetAscendingTop15(n *PriceNode, results *[]PriceNode) {
 	if n == nil || len(*results) >= 15 {
 		return
@@ -68,7 +67,7 @@ func GetAscendingTop15(n *PriceNode, results *[]PriceNode) {
 	GetAscendingTop15(n.Right, results)
 }
 
-func main() {
+func PrintTopBidsAndAsks() error {
 	url := "wss://stream.binance.com:9443/ws/btcusdc@depth"
 
 	c, _, err := websocket.DefaultDialer.Dial(url, nil)
@@ -95,20 +94,35 @@ func main() {
 				priceStr := bid[0]
 				quantityStr := bid[1]
 
-				quantity, _ := strconv.ParseFloat(quantityStr, 64)
-				price, _ := strconv.ParseFloat(priceStr, 64)
+				quantity, err := strconv.ParseFloat(quantityStr, 64)
 
-				bidsBst = bidsBst.Insert(quantity, price, true)
+				if err != nil {
+					return fmt.Errorf("err %v converting str to float64", err)
+				}
+
+				price, err := strconv.ParseFloat(priceStr, 64)
+
+				if err != nil {
+					return fmt.Errorf("err %v converting str to float64", err)
+				}
+
+				bidsBst = bidsBst.Insert(quantity, price)
 			}
 
 			for _, ask := range asks {
 				priceStr := ask[0]
 				quantityStr := ask[1]
 
-				quantity, _ := strconv.ParseFloat(quantityStr, 64)
-				price, _ := strconv.ParseFloat(priceStr, 64)
+				quantity, err := strconv.ParseFloat(quantityStr, 64)
+				if err != nil {
+					return fmt.Errorf("err %v converting str to float64", err)
+				}
+				price, err := strconv.ParseFloat(priceStr, 64)
 
-				askBst = askBst.Insert(quantity, price, false)
+				if err != nil {
+					return fmt.Errorf("err %v converting str to float64", err)
+				}
+				askBst = askBst.Insert(quantity, price)
 			}
 			// fmt.Printf("price: %s | qty: %s  bid ||| price: %s | qty: %s  ask\n", topBid[0], topBid[1], topAsk[0], topAsk[1])
 
@@ -123,7 +137,7 @@ func main() {
 			for i, bid := range bidResults {
 				fmt.Printf("%v. Price: %v ; Qty: %v\n", i+1, bid.Price, bid.Quantity)
 			}
-			
+
 			fmt.Println("\nTop asks")
 			fmt.Println("----------------------")
 
@@ -133,4 +147,8 @@ func main() {
 
 		}
 	}
+}
+
+func main() {
+	PrintTopBidsAndAsks()
 }
