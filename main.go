@@ -30,44 +30,83 @@ func (n *PriceNode) Insert(quantity, price float64) *PriceNode {
 	if n == nil {
 		return &PriceNode{Quantity: quantity, Price: price}
 	}
-
 	if price == n.Price {
-		n.Quantity = quantity 
+		n.Quantity = quantity
 		return n
 	}
 
 	if price > n.Price {
 		n.Right = n.Right.Insert(quantity, price)
-	} else { 
+	} else {
 		n.Left = n.Left.Insert(quantity, price)
 	}
 
 	return n
 }
 
-func GetDescendingTop15(n *PriceNode, results *[]PriceNode) {
-	if n == nil || len(*results) >= 15 {
-		return
+func (n *PriceNode) Delete(price float64) *PriceNode {
+	if n == nil {
+		return nil
 	}
-	GetDescendingTop15(n.Right, results)
-	if len(*results) < 15 && n.Quantity > 0 {
-		*results = append(*results, *n)
+
+	if price < n.Price {
+		n.Left = n.Left.Delete(price)
+	} else if price > n.Price {
+		n.Right = n.Right.Delete(price)
+	} else {
+
+		if n.Left == nil {
+			return n.Right
+		} else if n.Right == nil {
+			return n.Left
+		}
+
+		temp := n.Right.FindMin()
+
+		n.Price = temp.Price
+		n.Quantity = temp.Quantity
+
+		n.Right = n.Right.Delete(temp.Price)
 	}
-	GetDescendingTop15(n.Left, results)
+	return n
 }
 
-func GetAscendingTop15(n *PriceNode, results *[]PriceNode) {
-	if n == nil || len(*results) >= 15 {
-		return
+func (n *PriceNode) FindMin() *PriceNode {
+	if n == nil {
+		return nil
 	}
-	GetAscendingTop15(n.Left, results)
-	if len(*results) < 15 && n.Quantity > 0 {
-		*results = append(*results, *n)
+	if n.Left == nil {
+		return n
+	} else {
+		return n.Left.FindMin()
 	}
-	GetAscendingTop15(n.Right, results)
 }
 
-func PrintTopBidsAndAsks() error {
+
+
+func GetDescendingTopN(node *PriceNode, results *[]PriceNode, n int) {
+	if node == nil || len(*results) >= n {
+		return
+	}
+	GetDescendingTopN(node.Right, results, n)
+	if len(*results) < n && node.Quantity > 0 {
+		*results = append(*results, *node)
+	}
+	GetDescendingTopN(node.Left, results, n)
+}
+
+func GetAscendingTopN(node *PriceNode, results *[]PriceNode, n int) {
+	if node == nil || len(*results) >= n {
+		return
+	}
+	GetAscendingTopN(node.Left, results, n)
+	if len(*results) < n && node.Quantity > 0 {
+		*results = append(*results, *node)
+	}
+	GetAscendingTopN(node.Right, results, n)
+}
+
+func PrintTopBidsAndAsks(n int) error {
 	url := "wss://stream.binance.com:9443/ws/btcusdc@depth"
 
 	c, _, err := websocket.DefaultDialer.Dial(url, nil)
@@ -107,6 +146,10 @@ func PrintTopBidsAndAsks() error {
 				}
 
 				bidsBst = bidsBst.Insert(quantity, price)
+				if len(bidsBst) > n {
+					minNode := bidsBst.FindMin()
+					bidsBst.Delete(minNode.Price)
+				}
 			}
 
 			for _, ask := range asks {
@@ -129,8 +172,8 @@ func PrintTopBidsAndAsks() error {
 			var bidResults []PriceNode
 			var askResults []PriceNode
 
-			GetDescendingTop15(bidsBst, &bidResults)
-			GetAscendingTop15(askBst, &askResults)
+			GetDescendingTopN(bidsBst, &bidResults, n)
+			GetAscendingTopN(askBst, &askResults, n)
 			fmt.Println("\nTop bids")
 			fmt.Println("----------------------")
 
@@ -144,11 +187,10 @@ func PrintTopBidsAndAsks() error {
 			for i, ask := range askResults {
 				fmt.Printf("%v. Price: %v ; Qty: %v\n", i+1, ask.Price, ask.Quantity)
 			}
-
 		}
 	}
 }
 
 func main() {
-	PrintTopBidsAndAsks()
+	PrintTopBidsAndAsks(15)
 }
