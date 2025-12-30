@@ -117,14 +117,14 @@ func main() {
 
 			GetDescendingTop10(bidsBst, &bidResults)
 			GetAscendingTop10(askBst, &askResults)
-			fmt.Println("Top bids")
+			fmt.Println("\nTop bids")
 			fmt.Println("----------------------")
 
 			for i, bid := range bidResults {
 				fmt.Printf("%v. Price: %v ; Qty: %v\n", i+1, bid.Price, bid.Quantity)
 			}
 			
-			fmt.Println("Top asks")
+			fmt.Println("\nTop asks")
 			fmt.Println("----------------------")
 
 			for i, ask := range askResults {
