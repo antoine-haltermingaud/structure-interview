@@ -24,11 +24,23 @@ type PriceNode struct {
 	Quantity float64
 	Left     *PriceNode
 	Right    *PriceNode
+	Size     int
+}
+
+func (n *PriceNode) GetSize() int {
+	if n == nil {
+		return 0
+	}
+	return n.Size
+}
+
+func (n *PriceNode) recalculateSize() {
+	n.Size = 1 + n.Left.GetSize() + n.Right.GetSize()
 }
 
 func (n *PriceNode) Insert(quantity, price float64) *PriceNode {
 	if n == nil {
-		return &PriceNode{Quantity: quantity, Price: price}
+		return &PriceNode{Quantity: quantity, Price: price, Size: 1}
 	}
 	if price == n.Price {
 		n.Quantity = quantity
@@ -40,7 +52,7 @@ func (n *PriceNode) Insert(quantity, price float64) *PriceNode {
 	} else {
 		n.Left = n.Left.Insert(quantity, price)
 	}
-
+	n.recalculateSize()
 	return n
 }
 
@@ -54,7 +66,6 @@ func (n *PriceNode) Delete(price float64) *PriceNode {
 	} else if price > n.Price {
 		n.Right = n.Right.Delete(price)
 	} else {
-
 		if n.Left == nil {
 			return n.Right
 		} else if n.Right == nil {
@@ -62,12 +73,11 @@ func (n *PriceNode) Delete(price float64) *PriceNode {
 		}
 
 		temp := n.Right.FindMin()
-
 		n.Price = temp.Price
 		n.Quantity = temp.Quantity
-
 		n.Right = n.Right.Delete(temp.Price)
 	}
+	n.recalculateSize()
 	return n
 }
 
@@ -77,12 +87,35 @@ func (n *PriceNode) FindMin() *PriceNode {
 	}
 	if n.Left == nil {
 		return n
-	} else {
-		return n.Left.FindMin()
 	}
+	return n.Left.FindMin()
 }
 
+func (n *PriceNode) FindMax() *PriceNode {
+	if n == nil {
+		return nil
+	}
+	if n.Right == nil {
+		return n
+	}
+	return n.Right.FindMax()
+}
 
+func (n *PriceNode) DeleteMin() *PriceNode {
+	if n == nil {
+		return nil
+	}
+	minNode := n.FindMin()
+	return n.Delete(minNode.Price)
+}
+
+func (n *PriceNode) DeleteMax() *PriceNode {
+	if n == nil {
+		return nil
+	}
+	maxNode := n.FindMax()
+	return n.Delete(maxNode.Price)
+}
 
 func GetDescendingTopN(node *PriceNode, results *[]PriceNode, n int) {
 	if node == nil || len(*results) >= n {
@@ -118,75 +151,74 @@ func PrintTopBidsAndAsks(n int) error {
 
 	fmt.Println("Reading stream")
 	var bidsBst *PriceNode
-	var askBst *PriceNode
+	var asksBst *PriceNode
 
 	for {
 		_, message, _ := c.ReadMessage()
 
 		var output JsonOutput
-		json.Unmarshal(message, &output)
+		if err := json.Unmarshal(message, &output); err != nil {
+			continue
+		}
 		bids := output.Bids
 		asks := output.Asks
 
-		if len(bids) > 0 && len(asks) > 0 {
+		if len(bids) > 0 {
 			for _, bid := range bids {
 				priceStr := bid[0]
 				quantityStr := bid[1]
 
-				quantity, err := strconv.ParseFloat(quantityStr, 64)
+				quantity, _ := strconv.ParseFloat(quantityStr, 64)
+				price, _ := strconv.ParseFloat(priceStr, 64)
 
-				if err != nil {
-					return fmt.Errorf("err %v converting str to float64", err)
-				}
-
-				price, err := strconv.ParseFloat(priceStr, 64)
-
-				if err != nil {
-					return fmt.Errorf("err %v converting str to float64", err)
-				}
-
-				bidsBst = bidsBst.Insert(quantity, price)
-				if len(bidsBst) > n {
-					minNode := bidsBst.FindMin()
-					bidsBst.Delete(minNode.Price)
+				if quantity == 0 {
+					bidsBst = bidsBst.Delete(price)
+				} else {
+					bidsBst = bidsBst.Insert(quantity, price)
 				}
 			}
+			for bidsBst.GetSize() > 10*n {
+				bidsBst = bidsBst.DeleteMin()
+			}
+		}
 
+		if len(asks) > 0 {
 			for _, ask := range asks {
 				priceStr := ask[0]
 				quantityStr := ask[1]
 
-				quantity, err := strconv.ParseFloat(quantityStr, 64)
-				if err != nil {
-					return fmt.Errorf("err %v converting str to float64", err)
+				quantity, _ := strconv.ParseFloat(quantityStr, 64)
+				price, _ := strconv.ParseFloat(priceStr, 64)
+
+				if quantity == 0 {
+					asksBst = asksBst.Delete(price)
+				} else {
+					asksBst = asksBst.Insert(quantity, price)
 				}
-				price, err := strconv.ParseFloat(priceStr, 64)
-
-				if err != nil {
-					return fmt.Errorf("err %v converting str to float64", err)
-				}
-				askBst = askBst.Insert(quantity, price)
 			}
-			// fmt.Printf("price: %s | qty: %s  bid ||| price: %s | qty: %s  ask\n", topBid[0], topBid[1], topAsk[0], topAsk[1])
-
-			var bidResults []PriceNode
-			var askResults []PriceNode
-
-			GetDescendingTopN(bidsBst, &bidResults, n)
-			GetAscendingTopN(askBst, &askResults, n)
-			fmt.Println("\nTop bids")
-			fmt.Println("----------------------")
-
-			for i, bid := range bidResults {
-				fmt.Printf("%v. Price: %v ; Qty: %v\n", i+1, bid.Price, bid.Quantity)
+			for asksBst.GetSize() > 10*n {
+				asksBst = asksBst.DeleteMax()
 			}
+		}
+		// fmt.Printf("price: %s | qty: %s  bid ||| price: %s | qty: %s  ask\n", topBid[0], topBid[1], topAsk[0], topAsk[1])
 
-			fmt.Println("\nTop asks")
-			fmt.Println("----------------------")
+		var bidResults []PriceNode
+		var askResults []PriceNode
 
-			for i, ask := range askResults {
-				fmt.Printf("%v. Price: %v ; Qty: %v\n", i+1, ask.Price, ask.Quantity)
-			}
+		GetDescendingTopN(bidsBst, &bidResults, n)
+		GetAscendingTopN(asksBst, &askResults, n)
+		fmt.Println("\nTop bids")
+		fmt.Println("----------------------")
+
+		for i, bid := range bidResults {
+			fmt.Printf("%v. Price: %v ; Qty: %v\n", i+1, bid.Price, bid.Quantity)
+		}
+
+		fmt.Println("\nTop asks")
+		fmt.Println("----------------------")
+
+		for i, ask := range askResults {
+			fmt.Printf("%v. Price: %v ; Qty: %v\n", i+1, ask.Price, ask.Quantity)
 		}
 	}
 }
