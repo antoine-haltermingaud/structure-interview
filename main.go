@@ -25,6 +25,7 @@ type PriceNode struct {
 	Left     *PriceNode
 	Right    *PriceNode
 	Size     int
+	Height   int
 }
 
 func (n *PriceNode) GetSize() int {
@@ -34,13 +35,57 @@ func (n *PriceNode) GetSize() int {
 	return n.Size
 }
 
-func (n *PriceNode) recalculateSize() {
+func (n *PriceNode) getHeight() int {
+	if n == nil {
+		return 0
+	}
+	return n.Height
+}
+
+func (n *PriceNode) getBalance() int {
+	if n == nil {
+		return 0
+	}
+	return n.Left.getHeight() - n.Right.getHeight()
+}
+
+func (n *PriceNode) update() {
 	n.Size = 1 + n.Left.GetSize() + n.Right.GetSize()
+	lh := n.Left.getHeight()
+	rh := n.Right.getHeight()
+	if lh > rh {
+		n.Height = lh + 1
+	} else {
+		n.Height = rh + 1
+	}
+}
+
+func (y *PriceNode) rightRotate() *PriceNode {
+	x := y.Left
+	T2 := x.Right
+
+	x.Right = y
+	y.Left = T2
+	y.update()
+	x.update()
+	return x
+}
+
+func (x *PriceNode) leftRotate() *PriceNode {
+	y := x.Right
+	T2 := y.Left
+
+	y.Left = x
+	x.Right = T2
+	x.update()
+	y.update()
+
+	return y
 }
 
 func (n *PriceNode) Insert(quantity, price float64) *PriceNode {
 	if n == nil {
-		return &PriceNode{Quantity: quantity, Price: price, Size: 1}
+		return &PriceNode{Quantity: quantity, Price: price, Size: 1, Height: 1}
 	}
 	if price == n.Price {
 		n.Quantity = quantity
@@ -52,7 +97,29 @@ func (n *PriceNode) Insert(quantity, price float64) *PriceNode {
 	} else {
 		n.Left = n.Left.Insert(quantity, price)
 	}
-	n.recalculateSize()
+
+	n.update()
+
+	balance := n.getBalance()
+
+	if balance > 1 && price < n.Left.Price {
+		return n.rightRotate()
+	}
+
+	if balance < -1 && price > n.Right.Price {
+		return n.leftRotate()
+	}
+
+	if balance > 1 && price > n.Left.Price {
+		n.Left = n.Left.leftRotate()
+		return n.rightRotate()
+	}
+
+	if balance < -1 && price < n.Right.Price {
+		n.Right = n.Right.rightRotate()
+		return n.leftRotate()
+	}
+
 	return n
 }
 
@@ -77,7 +144,27 @@ func (n *PriceNode) Delete(price float64) *PriceNode {
 		n.Quantity = temp.Quantity
 		n.Right = n.Right.Delete(temp.Price)
 	}
-	n.recalculateSize()
+
+	n.update()
+
+	balance := n.getBalance()
+
+	if balance > 1 && n.Left.getBalance() >= 0 {
+		return n.rightRotate()
+	}
+	if balance > 1 && n.Left.getBalance() < 0 {
+		n.Left = n.Left.leftRotate()
+		return n.rightRotate()
+	}
+
+	if balance < -1 && n.Right.getBalance() <= 0 {
+		return n.leftRotate()
+	}
+	if balance < -1 && n.Right.getBalance() > 0 {
+		n.Right = n.Right.rightRotate()
+		return n.leftRotate()
+	}
+
 	return n
 }
 
